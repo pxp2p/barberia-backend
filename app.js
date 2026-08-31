@@ -3,6 +3,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+
+// Importación inteligente de modelos y rutas
 const User = require('./models/User'); 
 const authRoutes = require('./routes/authRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
@@ -13,7 +15,7 @@ const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
-// Liberación absoluta de CORS configurada de forma limpia para Vercel
+// Liberación absoluta de CORS configurada de forma limpia para producción
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Credentials', 'true');
@@ -28,10 +30,11 @@ app.use((req, res, next) => {
 
 app.use(cors());
 
+// Conexión central de la arquitectura
 async function startServer() {
     try {
         console.log('⏳ Intentando conectar a MongoDB Atlas...');
-        // Clavamos la URI directa limpia de tu Atlas para que no falle por variables
+        // Clavamos la URI directa limpia de tu Atlas para que no falle por variables en la nube
         await mongoose.connect('mongodb+srv://barber:corte10gold@cluster0.ibzonk9.mongodb.net/barberia?retryWrites=true&w=majority');
         console.log('🚀 CONEXIÓN REALIZADA CON ÉXITO A MONGODB ATLAS (NUBE)');
 
@@ -53,8 +56,9 @@ async function startServer() {
 
         console.log('👑 SISTEMA OPERATIVO ONLINE: Usuario: 1111111111 | Clave: barber99');
 
-        app.use('/api/auth', authRoutes);
-        app.use('/api/appointments', appointmentRoutes);
+        // Enlazar las cañerías de los endpoints del sistema
+        app.use('/auth', authRoutes);
+        app.use('/appointments', appointmentRoutes);
 
         app.listen(PORT, () => {
             console.log(`Servidor corriendo en el puerto ${PORT}`);
@@ -65,4 +69,3 @@ async function startServer() {
 }
 
 startServer();
-
