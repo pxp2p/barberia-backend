@@ -1,35 +1,31 @@
 const mongoose = require('mongoose');
 
 const AppointmentSchema = new mongoose.Schema({
-    barber: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    client: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null // null significa que la franja horaria está "Disponible"
-    },
-    date: {
-        type: String, // Formato AAAA-MM-DD para búsquedas exactas sin desfasajes de zona horaria
-        required: true
-    },
-    time: {
-        type: String, // Formato HH:MM (ej: "09:30")
-        required: true
-    },
-    status: {
-        type: String,
-        enum: ['disponible', 'pendiente', 'confirmado', 'cancelado'],
-        default: 'disponible'
-    }
+  date: {
+    type: String, // Guarda la fecha en formato limpio (Ej: 2026-08-31)
+    required: true
+  },
+  time: {
+    type: String, // Guarda el horario (Ej: 14:30)
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['disponible', 'ocupado'],
+    default: 'disponible'
+  },
+  barber: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Enlace inteligente con el ID real del Barbero de la tabla User
+    required: true
+  },
+  client: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Enlace inteligente con el ID real del Cliente de la tabla User
+    default: null
+  }
 }, {
-    timestamps: true
+  timestamps: true
 });
 
-// Evita que se duplique la misma franja horaria para el mismo barbero en el mismo día y hora
-AppointmentSchema.index({ barber: 1, date: 1, time: 1 }, { unique: true });
-
-// LA LÍNEA QUE FALTABA PARA EXPORTAR EL MODELO A EXPORTACIONES COMPATIBLES
 module.exports = mongoose.model('Appointment', AppointmentSchema);
