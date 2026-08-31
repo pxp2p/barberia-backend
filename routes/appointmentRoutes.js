@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const appointmentController = require('../controllers/appointmentController');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Crear franja horaria (Solo permitido para Barberos)
-router.post('/create-slot', protect, authorize('barber'), appointmentController.createTimeSlot);
+// 1. Crear franja: POST a https://onrender.com (Protegido)
+router.post('/create-slot', authMiddleware, appointmentController.createSlot);
 
-// Reservar un turno (Permitido para Clientes)
-router.post('/book', protect, appointmentController.bookAppointment);
+// 2. Traer lista: GET a https://onrender.com (Público/Libre)
+router.get('/list', appointmentController.listAppointments);
 
-// Ver turnos por fecha (Público)
-router.get('/list', appointmentController.getAppointmentsByDate);
+// 3. Reservar turno: POST a https://onrender.com (Protegido)
+router.post('/book', authMiddleware, appointmentController.bookAppointment);
+
+// 4. Cancelar o liberar: POST a https://onrender.com (Protegido)
+router.post('/cancel', authMiddleware, appointmentController.cancelAppointment);
 
 module.exports = router;
-// Liberar turno (Solo permitido para Barberos)
-router.post('/cancel', protect, authorize('barber'), appointmentController.cancelAppointment);
