@@ -1,30 +1,27 @@
 const jwt = require('jsonwebtoken');
 
-exports.protect = (req, res, next) => {
-    let token;
+// FILTRO DE VERIFICACIÓN ABSOLUTA DE TOKENS EN LA RED
+module.exports = (req, res, next) => {
+  // Capturar el token que viaja en la cabecera de la petición de Vercel
+  const authHeader = req.header('Authorization');
+  
+  if (!authHeader) {
+    return res.status(401).json({ message: 'Acceso denegado. No se encontró ningún token de seguridad' });
+  }
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        token = req.headers.authorization.split(' ')[1];
-    }
+  // Descomponer el formato estándar "Bearer TOKEN_AQUÍ"
+  const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
 
-    if (!token) {
-        return res.status(401).json({ message: 'No autorizado, falta el token' });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secreto_temporal_barberia');
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({ message: 'Token inválido o expirado' });
-    }
-};
-
-exports.authorize = (...roles) => {
-    return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ message: `El rol '${req.user.role}' no tiene permiso para realizar esta acción` });
-        }
-        next();
-    };
+  try {
+    // Descifrar el token usando la clave maestra (idéntica a la configurada en app.js)
+    const verified = jwt.verify(token, process.env.JWT_SECRET || 'secreto_temporal_barberia');
+    
+    // Inyectar los datos reales del usuario descifrado adentro de la petición (req.user)
+    req.user = verified;
+    
+    // Dar el pase libre para que avance al controlador de base de datos
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Token de seguridad inválido o expirado' });
+  }
 };
