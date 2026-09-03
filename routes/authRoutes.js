@@ -1,7 +1,7 @@
 const express = require('express');
-const router = express.Router(); // Corregido el tipado genérico
+const router = express.Router();
 const authController = require('../controllers/authController');
-const authMiddleware = require('../../middleware/authMiddleware'); // <-- ¡LE AGREGAMOS UN PUNTO MÁS PARA SALIR DE LA CARPETA ROUTES!
+const authMiddleware = require('../middleware/authMiddleware'); // <-- SOLUCIONADO CON UN SOLO UN JUEGO DE PUNTOS
 
 // Caminos públicos expuestos a internet para el login y el register
 router.post('/register', authController.register);
