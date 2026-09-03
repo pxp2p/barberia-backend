@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 
 const AppointmentSchema = new mongoose.Schema({
   date: {
-    type: String, // Guarda la fecha en formato limpio (Ej: 2026-08-31)
+    type: String, 
     required: true
   },
   time: {
-    type: String, // Guarda el horario (Ej: 14:30)
+    type: String, 
     required: true
   },
   status: {
@@ -16,12 +16,12 @@ const AppointmentSchema = new mongoose.Schema({
   },
   barber: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Enlace inteligente con el ID real del Barbero de la tabla User
+    ref: 'User', // Conexión estricta con la tabla de usuarios de MongoDB Atlas
     required: true
   },
   client: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Enlace inteligente con el ID real del Cliente de la tabla User
+    ref: 'User', // Conexión estricta con la tabla de usuarios de MongoDB Atlas para el populate
     default: null
   }
 }, {
