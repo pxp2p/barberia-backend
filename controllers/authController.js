@@ -31,7 +31,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { id: newUser._id, role: newUser.role, name: newUser.name },
       process.env.JWT_SECRET || 'secreto_jefatura_barber_app_99',
-      { expiresIn: '30d' }
+      { expiresIn: '365d' }
     );
 
     return res.status(201).json({
@@ -66,7 +66,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role, name: user.name },
       process.env.JWT_SECRET || 'secreto_jefatura_barber_app_99',
-      { expiresIn: '30d' }
+      { expiresIn: '365d' }
     );
 
     return res.status(200).json({
