@@ -121,8 +121,8 @@ exports.cancelAppointment = async (req, res) => {
     // 📲 DISPARADOR PUSH 2: NOTIFICAR AL CLIENTE (Usa la copia de seguridad que guardamos arriba)
     if (savedClientToken) {
       const payload = JSON.stringify({
-        title: 'TURNO LIBERADO - JEFATURA',
-        body: `La barbería ha liberado tu turno de las ${appointmentTime} hs. Ya podés ingresar y reservar otro horario en la grilla.`,
+        title: 'TURNO LIBERADO',
+        body: `La barbería ha liberado tu turno de las ${appointmentTime} hs. Ya podés ingresar y reservar otro horario.`,
         icon: '/logo.png'
       });
 
