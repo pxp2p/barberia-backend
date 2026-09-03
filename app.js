@@ -46,7 +46,7 @@ async function startServer() {
             const hashedPassword = await bcrypt.hash('barber99', salt);
             
             const defaultBarber = new User({
-                name: 'Barbería Jefatura',
+                name: 'Barber',
                 phone: '1111111111', 
                 password: hashedPassword,
                 role: 'barber'
