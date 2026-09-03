@@ -18,15 +18,15 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-      enum: ['barber', 'client'], // Solo permite estos dos roles
+    enum: ['barber', 'client'], // Solo permite estos dos roles
     default: 'client'
   },
   pushSubscription: {
     type: Object,
     default: null
   }
- {
-  timestamps: true // Guarda de forma automática la fecha de creacion
+}, {
+  timestamps: true // Guarda de forma automática la fecha de creación
 });
 
 module.exports = mongoose.model('User', UserSchema);
