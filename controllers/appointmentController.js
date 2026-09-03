@@ -5,7 +5,6 @@ exports.createSlot = async (req, res) => {
   try {
     const { date, time } = req.body;
 
-    // Evitar que se duplique un turno exactamente el mismo día a la misma hora
     const slotExists = await Appointment.findOne({ date, time });
     if (slotExists) {
       return res.status(400).json({ message: 'Este horario ya está publicado para ese día' });
@@ -15,7 +14,7 @@ exports.createSlot = async (req, res) => {
       date,
       time,
       status: 'disponible',
-      barber: req.user.id // Acoplado al token de seguridad del barbero logueado
+      barber: req.user.id 
     });
 
     await newAppointment.save();
@@ -27,10 +26,8 @@ exports.createSlot = async (req, res) => {
 };
 
 // 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS
-// 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS
 exports.listAppointments = async (req, res) => {
   try {
-    // Trae los turnos ordenados y "popula" los datos del cliente que reservó
     const appointments = await Appointment.find()
       .populate('client', 'name phone')
       .sort({ date: 1, time: 1 });
@@ -40,10 +37,22 @@ exports.listAppointments = async (req, res) => {
   }
 };
 
-// 3. RESERVAR UN TURNO DISPONIBLE (CLIENTES O BARBEROS)
+// 3. RESERVAR EL TURNO (CON ADUANA DE TURNO ÚNICO PARA CLIENTES)
 exports.bookAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
+
+    // 🔒 REGLA DE ORO DE SEGURIDAD INTERNA:
+    // Si el usuario logueado es un cliente, verificamos si ya tiene algún turno ocupado en el sistema
+    if (req.user.role === 'client') {
+      const hasActiveBooking = await Appointment.findOne({ client: req.user.id, status: 'ocupado' });
+      
+      if (hasActiveBooking) {
+        return res.status(400).json({ 
+          message: `Ya tenés un turno reservado para el día ${hasActiveBooking.date.split('-').reverse().join('/')} a las ${hasActiveBooking.time} hs. Cancelá el anterior para poder elegir uno nuevo.` 
+        });
+      }
+    }
 
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
@@ -55,7 +64,7 @@ exports.bookAppointment = async (req, res) => {
     }
 
     appointment.status = 'ocupado';
-    appointment.client = req.user.id; // Asignar el ID real del usuario que reserva
+    appointment.client = req.user.id; 
     await appointment.save();
 
     return res.status(200).json({ message: 'Turno reservado con éxito', appointment });
@@ -65,7 +74,7 @@ exports.bookAppointment = async (req, res) => {
   }
 };
 
-// 4. CANCELAR O LIBERAR UN TURNO AGENDA
+// 4. CANCELAR O LIBERAR UN TURNO AGENDADO
 exports.cancelAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
@@ -75,7 +84,6 @@ exports.cancelAppointment = async (req, res) => {
       return res.status(404).json({ message: 'El turno solicitado no existe' });
     }
 
-    // Volver a dejarlo libre y limpiar el cliente asignado
     appointment.status = 'disponible';
     appointment.client = null;
     await appointment.save();
