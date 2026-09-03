@@ -1,4 +1,12 @@
 require('dotenv').config();
+// 🔥 GENERADOR TEMPORAL GRATUITO DE LLAVES VAPID (Borrar después de copiar)
+const webpush = require('web-push');
+const keys = webpush.generateVAPIDKeys();
+console.log('====== 🔑 MIS LLAVES REALES DE 65 BYTES ======');
+console.log('PUBLIC_KEY_DORADA:', keys.publicKey);
+console.log('PRIVATE_KEY_DORADA:', keys.privateKey);
+console.log('==============================================');
+// panasdnasjdna
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
