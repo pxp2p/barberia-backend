@@ -2,8 +2,8 @@ const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const webpush = require('web-push');
 
-// CONFIGURACIÓN DE LLAVES VAPID (Las credenciales para que el celular acepte tus alertas)
-webpush.setVAPIDDetails(
+// CONFIGURACIÓN DE LLAVES VAPID (Sintaxis nativa corregida con Vapid minúsculo)
+webpush.setVapidDetails(
   'mailto:jefaturabarberia@gmail.com',
   'BDZorH9Y78oK4D3mX6vL2w9Pq4tK8j5zM1n_R3xV6b8u4_c5T6L7K3p2O9s1V4n7f8G3M2k5P4q1L3m6O7s8V9', // Llave Pública de Firma
   'sV1_zLpQ4m_N9vT6X3r4s5t6u7v8w9x0y1z2A3B4C5D' // Llave Privada de Firma
