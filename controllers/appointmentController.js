@@ -74,7 +74,8 @@ exports.bookAppointment = async (req, res) => {
   }
 };
 
-// 4. CANCELAR O LIBERAR UN TURNO AGENDADO
+
+// 4. CANCELAR RESERVA O ELIMINAR FRANJA HORARIA DEFINITIVAMENTE
 exports.cancelAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
@@ -84,6 +85,14 @@ exports.cancelAppointment = async (req, res) => {
       return res.status(404).json({ message: 'El turno solicitado no existe' });
     }
 
+    // 🕵️‍♂️ NUEVO DETECTOR DE PROPÓSITO:
+    // Si el turno ya está DISPONIBLE y la petición la hace el barbero, significa que quiere BORRAR la franja por completo
+    if (appointment.status === 'disponible' && req.user.role === 'barber') {
+      await Appointment.findByIdAndDelete(appointmentId); // Extirpa el documento físico de MongoDB Atlas
+      return res.status(200).json({ message: 'Franja horaria eliminada del mapa correctamente' });
+    }
+
+    // Si el turno estaba ocupado, hace la liberación tradicional (vuelve a verde)
     appointment.status = 'disponible';
     appointment.client = null;
     await appointment.save();
@@ -91,6 +100,7 @@ exports.cancelAppointment = async (req, res) => {
     return res.status(200).json({ message: 'Horario liberado correctamente', appointment });
 
   } catch (error) {
-    return res.status(500).json({ message: 'Error al cancelar el turno', error: error.message });
+    return res.status(500).json({ message: 'Error al procesar la cancelación', error: error.message });
   }
 };
+
