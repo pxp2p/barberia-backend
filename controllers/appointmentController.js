@@ -27,10 +27,13 @@ exports.createSlot = async (req, res) => {
 };
 
 // 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS
+// 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS
 exports.listAppointments = async (req, res) => {
   try {
-    // Los trae ordenados por fecha y hora ascendente
-    const appointments = await Appointment.find().sort({ date: 1, time: 1 });
+    // Trae los turnos ordenados y "popula" los datos del cliente que reservó
+    const appointments = await Appointment.find()
+      .populate('client', 'name phone')
+      .sort({ date: 1, time: 1 });
     return res.status(200).json(appointments);
   } catch (error) {
     return res.status(500).json({ message: 'Error al traer la lista', error: error.message });
