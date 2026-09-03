@@ -1,6 +1,15 @@
 const Appointment = require('../models/Appointment');
+const User = require('../models/User');
+const webpush = require('web-push');
 
-// 1. PUBLICAR UNA FRANJA HORARIA NUEVA (SOLO BARBEROS)
+// CONFIGURACIÓN DE LLAVES VAPID (Las credenciales para que el celular acepte tus alertas)
+webpush.setVAPIDDetails(
+  'mailto:jefaturabarberia@gmail.com',
+  'BDZorH9Y78oK4D3mX6vL2w9Pq4tK8j5zM1n_R3xV6b8u4_c5T6L7K3p2O9s1V4n7f8G3M2k5P4q1L3m6O7s8V9', // Llave Pública de Firma
+  'sV1_zLpQ4m_N9vT6X3r4s5t6u7v8w9x0y1z2A3B4C5D' // Llave Privada de Firma
+);
+
+// 1. PUBLICAR UNA FRANJA HORARIA NUEVA (BARBEROS)
 exports.createSlot = async (req, res) => {
   try {
     const { date, time } = req.body;
@@ -37,35 +46,42 @@ exports.listAppointments = async (req, res) => {
   }
 };
 
-// 3. RESERVAR EL TURNO (CON ADUANA DE TURNO ÚNICO PARA CLIENTES)
+// 3. RESERVAR EL TURNO (MANDA ALERTA QUIRÚRGICA EXCLUSIVA AL BARBERO MAESTRO)
 exports.bookAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
 
-    // 🔒 REGLA DE ORO DE SEGURIDAD INTERNA:
-    // Si el usuario logueado es un cliente, verificamos si ya tiene algún turno ocupado en el sistema
     if (req.user.role === 'client') {
       const hasActiveBooking = await Appointment.findOne({ client: req.user.id, status: 'ocupado' });
-      
       if (hasActiveBooking) {
         return res.status(400).json({ 
-          message: `Ya tenés un turno reservado para el día ${hasActiveBooking.date.split('-').reverse().join('/')} a las ${hasActiveBooking.time} hs. Cancelá el anterior para poder elegir uno nuevo.` 
+          message: `Ya tenés un turno reservado para el día ${hasActiveBooking.date.split('-').reverse().join('/')} a las ${hasActiveBooking.time} hs. Cancelá el anterior para elegir uno nuevo.` 
         });
       }
     }
 
     const appointment = await Appointment.findById(appointmentId);
-    if (!appointment) {
-      return res.status(404).json({ message: 'El turno solicitado no existe' });
-    }
-
-    if (appointment.status === 'ocupado') {
-      return res.status(400).json({ message: 'Este turno ya fue reservado por otra persona' });
+    if (!appointment || appointment.status === 'ocupado') {
+      return res.status(400).json({ message: 'El turno ya no está disponible' });
     }
 
     appointment.status = 'ocupado';
     appointment.client = req.user.id; 
     await appointment.save();
+
+    // 📲 DISPARADOR PUSH 1: NOTIFICAR AL BARBERO (El dueño 1111111111)
+    const barberUser = await User.findOne({ role: 'barber', pushSubscription: { $ne: null } });
+    
+    if (barberUser) {
+      const payload = JSON.stringify({
+        title: '¡NUEVO TURNO AGENDADO!',
+        body: `${req.user.name} reservó el turno de las ${appointment.time} hs del día ${appointment.date.split('-').reverse().join('/')}.`,
+        icon: '/logo.png'
+      });
+
+      webpush.sendNotification(barberUser.pushSubscription, payload)
+        .catch(err => console.error('Error enviando push al barbero:', err));
+    }
 
     return res.status(200).json({ message: 'Turno reservado con éxito', appointment });
 
@@ -74,28 +90,41 @@ exports.bookAppointment = async (req, res) => {
   }
 };
 
-
-// 4. CANCELAR RESERVA O ELIMINAR FRANJA HORARIA DEFINITIVAMENTE
+// 4. CANCELAR RESERVA O BORRAR FRANJA (MANDA ALERTA QUIRÚRGICA INDIVIDUAL AL CLIENTE AFECTADO)
 exports.cancelAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
 
-    const appointment = await Appointment.findById(appointmentId);
+    const appointment = await Appointment.findById(appointmentId).populate('client');
     if (!appointment) {
       return res.status(404).json({ message: 'El turno solicitado no existe' });
     }
 
-    // 🕵️‍♂️ NUEVO DETECTOR DE PROPÓSITO:
-    // Si el turno ya está DISPONIBLE y la petición la hace el barbero, significa que quiere BORRAR la franja por completo
+    // Si el turno está libre y lo cancela el barbero, es una eliminación física de franja
     if (appointment.status === 'disponible' && req.user.role === 'barber') {
-      await Appointment.findByIdAndDelete(appointmentId); // Extirpa el documento físico de MongoDB Atlas
+      await Appointment.findByIdAndDelete(appointmentId);
       return res.status(200).json({ message: 'Franja horaria eliminada del mapa correctamente' });
     }
 
-    // Si el turno estaba ocupado, hace la liberación tradicional (vuelve a verde)
+    // Capturar datos del cliente antes de limpiarlo de las tablas de MongoDB Atlas
+    const targetClient = appointment.client;
+    const appointmentTime = appointment.time;
+
     appointment.status = 'disponible';
     appointment.client = null;
     await appointment.save();
+
+    // 📲 DISPARADOR PUSH 2: NOTIFICAR AL CLIENTE QUE SE LE LIBERÓ EL HORARIO
+    if (targetClient && targetClient.pushSubscription) {
+      const payload = JSON.stringify({
+        title: 'TURNO LIBERADO - JEFATURA',
+        body: `La barbería ha liberado tu turno de las ${appointmentTime} hs. Ya podés ingresar y reservar otro horario.`,
+        icon: '/logo.png'
+      });
+
+      webpush.sendNotification(targetClient.pushSubscription, payload)
+        .catch(err => console.error('Error enviando push al cliente:', err));
+    }
 
     return res.status(200).json({ message: 'Horario liberado correctamente', appointment });
 
@@ -103,4 +132,3 @@ exports.cancelAppointment = async (req, res) => {
     return res.status(500).json({ message: 'Error al procesar la cancelación', error: error.message });
   }
 };
-
