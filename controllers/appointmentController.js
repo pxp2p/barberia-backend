@@ -90,40 +90,45 @@ exports.bookAppointment = async (req, res) => {
   }
 };
 
-// 4. CANCELAR RESERVA O BORRAR FRANJA (MANDA ALERTA QUIRÚRGICA INDIVIDUAL AL CLIENTE AFECTADO)
+// 4. CANCELAR RESERVA O BORRAR FRANJA (CON CAPTURA DE TOKEN CRONOLÓGICA CORRECTA)
 exports.cancelAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
 
+    // Traemos el turno y populamos TODOS los datos del usuario cliente (incluido su token pushSubscription)
     const appointment = await Appointment.findById(appointmentId).populate('client');
     if (!appointment) {
       return res.status(404).json({ message: 'El turno solicitado no existe' });
     }
 
-    // Si el turno está libre y lo cancela el barbero, es una eliminación física de franja
+    // Caso A: Si el turno está libre y lo cancela el barbero, es una eliminación física de franja
     if (appointment.status === 'disponible' && req.user.role === 'barber') {
       await Appointment.findByIdAndDelete(appointmentId);
       return res.status(200).json({ message: 'Franja horaria eliminada del mapa correctamente' });
     }
 
-    // Capturar datos del cliente antes de limpiarlo de las tablas de MongoDB Atlas
-    const targetClient = appointment.client;
+    // 👑 REGLA DE ORO DE SEGURIDAD (LA SOLUCIÓN):
+    // Guardamos una copia exacta y profunda del cliente y su token PUSH en una variable aislada 
+    // ANTES de vaciar el casillero en la base de datos para que no se pierda.
+    const savedClientToken = appointment.client?.pushSubscription || null;
     const appointmentTime = appointment.time;
 
+    // Ahora sí, limpiamos los casilleros de forma segura en MongoDB Atlas
     appointment.status = 'disponible';
     appointment.client = null;
     await appointment.save();
 
-    // 📲 DISPARADOR PUSH 2: NOTIFICAR AL CLIENTE QUE SE LE LIBERÓ EL HORARIO
-    if (targetClient && targetClient.pushSubscription) {
+    // 📲 DISPARADOR PUSH 2: NOTIFICAR AL CLIENTE (Usa la copia de seguridad que guardamos arriba)
+    if (savedClientToken) {
       const payload = JSON.stringify({
         title: 'TURNO LIBERADO - JEFATURA',
-        body: `La barbería ha liberado tu turno de las ${appointmentTime} hs. Ya podés ingresar y reservar otro horario.`,
+        body: `La barbería ha liberado tu turno de las ${appointmentTime} hs. Ya podés ingresar y reservar otro horario en la grilla.`,
         icon: '/logo.png'
       });
 
-      webpush.sendNotification(targetClient.pushSubscription, payload)
-        .catch(err => console.error('Error enviando push al cliente:', err));
+      // El servidor despacha el globo neón directo al chip de ese celular específico
+      webpush.sendNotification(savedClientToken, payload)
+        .catch(err => console.error('Error enviando push de liberación al cliente:', err));
     }
 
     return res.status(200).json({ message: 'Horario liberado correctamente', appointment });
@@ -132,3 +137,4 @@ exports.cancelAppointment = async (req, res) => {
     return res.status(500).json({ message: 'Error al procesar la cancelación', error: error.message });
   }
 };
+
