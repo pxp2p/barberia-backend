@@ -96,7 +96,7 @@ exports.bookAppointment = async (req, res) => {
     await appointment.save();
 
     // 📲 DISPARADOR PUSH 1: NOTIFICAR AL BARBERO MAESTRO EN SU CELULAR
-    const barberUser = await User.findOne({ role: 'barber', pushSubscription: { \$ne: null } });
+    const barberUser = await User.findOne({ role: 'barber', pushSubscription: { $ne: null } });
     
     if (barberUser) {
       const payload = JSON.stringify({
