@@ -35,18 +35,42 @@ exports.createSlot = async (req, res) => {
 };
 
 // 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS
+// 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS (CON LIMPIEZA AUTOMÁTICA DE VENCIDOS)
 exports.listAppointments = async (req, res) => {
   try {
+    const now = new Date();
+
+    // 🕵️‍♂️ BARREDORA AUTOMÁTICA DE INTERNET:
+    // Traemos todos los turnos que están marcados como ocupados para revisar si ya vencieron
+    const occupiedSlots = await Appointment.find({ status: 'ocupado' });
+
+    for (const slot of occupiedSlots) {
+      if (slot.date && slot.time) {
+        const [year, month, day] = slot.date.split('-');
+        const [hour, minute] = slot.time.split(':');
+        const slotDateTime = new Date(year, month - 1, day, hour, minute);
+
+        // Si la hora actual ya superó el horario del turno, lo liberamos en MongoDB Atlas
+        if (now > slotDateTime) {
+          slot.status = 'disponible';
+          slot.client = null;
+          await slot.save();
+        }
+      }
+    }
+
+    // Una vez limpia la base de datos, mandamos la lista impecable ordenada al Frontend
     const appointments = await Appointment.find()
       .populate('client', 'name phone')
       .sort({ date: 1, time: 1 });
+
     return res.status(200).json(appointments);
+
   } catch (error) {
-    return res.status(500).json({ message: 'Error al traer la lista', error: error.message });
+    return res.status(500).json({ message: 'Error al traer la lista y limpiar', error: error.message });
   }
 };
 
-// 3. RESERVAR EL TURNO (MANDA ALERTA QUIRÚRGICA EXCLUSIVA AL BARBERO MAESTRO)
 exports.bookAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
