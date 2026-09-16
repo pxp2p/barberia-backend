@@ -34,24 +34,25 @@ exports.createSlot = async (req, res) => {
   }
 };
 
-// 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS
-// 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS (CON LIMPIEZA AUTOMÁTICA DE VENCIDOS)
+// 2. LISTAR ABSOLUTAMENTE TODOS LOS TURNOS ACTIVOS (CALIBRADO CON HORA DE ARGENTINA)
 exports.listAppointments = async (req, res) => {
   try {
-    const now = new Date();
+    // 🇦🇷 Capturamos la fecha y hora exacta actual formateada estrictamente en el huso horario de Argentina
+    const argentinaTimeStr = new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" });
+    const nowArgentina = new Date(argentinaTimeStr);
 
-    // 🕵️‍♂️ BARREDORA AUTOMÁTICA DE INTERNET:
-    // Traemos todos los turnos que están marcados como ocupados para revisar si ya vencieron
+    // Traemos todos los turnos marcados como ocupados para revisar si ya vencieron de verdad
     const occupiedSlots = await Appointment.find({ status: 'ocupado' });
 
     for (const slot of occupiedSlots) {
       if (slot.date && slot.time) {
         const [year, month, day] = slot.date.split('-');
         const [hour, minute] = slot.time.split(':');
+        // Construimos el objeto de tiempo del turno basándonos en la hora local argentina
         const slotDateTime = new Date(year, month - 1, day, hour, minute);
 
-        // Si la hora actual ya superó el horario del turno, lo liberamos en MongoDB Atlas
-        if (now > slotDateTime) {
+        // Si la hora real de Argentina superó al turno, la barredora lo libera de forma correcta
+        if (nowArgentina > slotDateTime) {
           slot.status = 'disponible';
           slot.client = null;
           await slot.save();
@@ -59,7 +60,7 @@ exports.listAppointments = async (req, res) => {
       }
     }
 
-    // Una vez limpia la base de datos, mandamos la lista impecable ordenada al Frontend
+    // Enviar la grilla limpia al Frontend ordenada
     const appointments = await Appointment.find()
       .populate('client', 'name phone')
       .sort({ date: 1, time: 1 });
@@ -71,48 +72,6 @@ exports.listAppointments = async (req, res) => {
   }
 };
 
-exports.bookAppointment = async (req, res) => {
-  try {
-    const { appointmentId } = req.body;
-
-    if (req.user.role === 'client') {
-      const hasActiveBooking = await Appointment.findOne({ client: req.user.id, status: 'ocupado' });
-      if (hasActiveBooking) {
-        return res.status(400).json({ 
-          message: `Ya tenés un turno reservado para el día ${hasActiveBooking.date.split('-').reverse().join('/')} a las ${hasActiveBooking.time} hs. Cancelá el anterior para elegir uno nuevo.` 
-        });
-      }
-    }
-
-    const appointment = await Appointment.findById(appointmentId);
-    if (!appointment || appointment.status === 'ocupado') {
-      return res.status(400).json({ message: 'El turno ya no está disponible' });
-    }
-
-    appointment.status = 'ocupado';
-    appointment.client = req.user.id; 
-    await appointment.save();
-
-    // 📲 DISPARADOR PUSH 1: NOTIFICAR AL BARBERO (El dueño 1111111111)
-    const barberUser = await User.findOne({ role: 'barber', pushSubscription: { $ne: null } });
-    
-    if (barberUser) {
-      const payload = JSON.stringify({
-        title: '¡NUEVO TURNO AGENDADO!',
-        body: `${req.user.name} reservó el turno de las ${appointment.time} hs del día ${appointment.date.split('-').reverse().join('/')}.`,
-        icon: '/logo.png'
-      });
-
-      webpush.sendNotification(barberUser.pushSubscription, payload)
-        .catch(err => console.error('Error enviando push al barbero:', err));
-    }
-
-    return res.status(200).json({ message: 'Turno reservado con éxito', appointment });
-
-  } catch (error) {
-    return res.status(500).json({ message: 'Error al reservar el turno', error: error.message });
-  }
-};
 
 // 4. CANCELAR RESERVA O BORRAR FRANJA (CON CAPTURA DE TOKEN CRONOLÓGICA CORRECTA)
 exports.cancelAppointment = async (req, res) => {
