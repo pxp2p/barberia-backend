@@ -5,8 +5,8 @@ const webpush = require('web-push'); // <-- ¡VITAL! Evita que se cuelgue el ser
 // CONFIGURACIÓN DE LLAVES VAPID (Match de 65 bytes con tu Frontend)
 webpush.setVapidDetails(
   'mailto:jefaturabarberia@gmail.com',
-  'BEnp8E2xV0yZK5m7G8h9j3K1_zLpQ4m_N9vT6X3r4s5t6u7v8w9x0y1z2A3B4C5D6E7F8G9H0I1J2K3L4M5N6O8P9Q0R1S2T3U4V5W', 
-  'AIzSyD3b1V4n7f8G3M2k5P4q1L3m6O7s8V9w0x1' 
+  'BDoG5Z_etfLKXw_De1Vg34jpspn-Ft75YAzCn5HIdhRA_fZBQeLPkHhOLNMTt0t4PVnJpy_H7zFyFsS0q7dhEdU', 
+  'dqAlNnb4AdhA48HWnahXvEA0yLBPkk2zDJYkcx39FB0' 
 );
 
 // 1. PUBLICAR UNA FRANJA HORARIA NUEVA (SOLO BARBEROS)
